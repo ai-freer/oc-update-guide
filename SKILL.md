@@ -1,11 +1,13 @@
 ---
 name: oc-update-guide
+version: 0.2.0
 description: >-
   Systematically upgrade OpenClaw with pre-flight checks, changelog triage,
   local-patch preservation, and rollback support. Use when the user says
-  "upgrade", "update", "bump version", "check for new version", "升级",
-  "更新版本", "更新 OpenClaw", or references an UPDATE-GUIDE file. Also
-  triggers on first install when the user says "初始化升级指南", "init
+  "upgrade openclaw", "update openclaw", "bump openclaw version",
+  "check for new openclaw version", "升级 openclaw", "升级 OpenClaw",
+  "更新 openclaw 版本", "更新 OpenClaw", or references an UPDATE-GUIDE file.
+  Also triggers on first install when the user says "初始化升级指南", "init
   update guide", or "scan openclaw environment".
 ---
 
@@ -30,7 +32,7 @@ description: >-
 
 ### 自动扫描
 
-运行 `scripts/pre-upgrade-check.sh openclaw` 或手动执行以下检测：
+运行 `scripts/pre-upgrade-check.sh` （可选传入目标版本号）或手动执行以下检测：
 
 ```bash
 # 版本
@@ -125,16 +127,13 @@ systemctl --user cat openclaw-gateway.service 2>/dev/null | grep ExecStartPre
 
 输出：`[Phase 2/6] 分析 changelog，筛选版本...`
 
-1. 获取 changelog：
-   ```bash
-   less ${install_path}/CHANGELOG.md
-   ```
+1. 读取 `${install_path}/CHANGELOG.md`
 
 2. 从 `current_version` 开始逐版本扫描，提取：
    - **Breaking Changes** — 逐条标注"影响/不影响"及理由
    - **Fixes** — 搜索 `keywords` 中的关键词，标记直接受益项
    - **Security** — 所有安全修复无条件标记
-   - **已知问题** — 检查该版本的 GitHub Issues 有无回退报告
+   - **已知问题** — 检查该版本的 GitHub Issues 有无回退报告（搜索 open issues 中是否有 regression 标签或提及该版本号的回退报告）
 
 3. 版本筛选逻辑：
 
@@ -168,8 +167,8 @@ systemctl --user cat openclaw-gateway.service 2>/dev/null | grep ExecStartPre
 输出：`[Phase 3/6] 备份配置...`
 
 ```bash
-cp ${config_path} ${config_path}.bak.$(date +%Y%m%d)
-echo "$(openclaw --version)" > /tmp/openclaw-pre-upgrade-version.txt
+cp ${config_path} ${config_path}.bak.$(date +%Y%m%d_%H%M%S)
+openclaw --version > ~/.openclaw/.pre-upgrade-version
 ```
 
 直接进入 Phase 4。
@@ -209,8 +208,11 @@ bash ${patch_script_path}
 3. 重新运行
 ```
 
-> Agent 尝试自动修复：对比新旧文件差异，定位新的匹配位置，更新 patch 脚本。
-> 修复后重新验证。如果无法自动修复，暂停等待用户指示。
+> Agent 可尝试自动修复，但需遵守以下边界：
+> 1. **修改 patch 脚本前，先备份原脚本**
+> 2. **向用户展示变更内容**（修改了哪些匹配串、改成了什么）
+> 3. 修复后重新验证；若仍失败，**回滚 patch 脚本到备份版本**
+> 4. 无法自动修复时，暂停等待用户指示（不得静默跳过）
 
 #### 5b. 手动修复
 
@@ -225,8 +227,7 @@ bash ${patch_script_path}
 输出：`[Phase 6/6] 重启服务，执行健康检查...`
 
 ```bash
-export XDG_RUNTIME_DIR=/run/user/$(id -u)
-systemctl --user restart openclaw-gateway.service
+# 按 UPDATE-GUIDE 中记录的服务管理方式重启服务
 
 openclaw health
 openclaw status
@@ -254,13 +255,19 @@ Patch 状态: 3/3 通过
 任何阶段出现不可恢复的问题时：
 
 ```bash
-OLD_VERSION=$(cat /tmp/openclaw-pre-upgrade-version.txt)
+# 1. 回退版本
+OLD_VERSION=$(cat ~/.openclaw/.pre-upgrade-version)
 npm i -g openclaw@${OLD_VERSION}
 openclaw doctor
-cp ${config_path}.bak.* ${config_path}
+
+# 2. 恢复最近一份配置备份（取时间戳最新的 .bak.* 文件）
+LATEST_BAK=$(ls -t ${config_path}.bak.* 2>/dev/null | head -1)
+cp "${LATEST_BAK}" ${config_path}
+
+# 3. 重打 patch
 bash ${patch_script_path}
-export XDG_RUNTIME_DIR=/run/user/$(id -u)
-systemctl --user restart openclaw-gateway.service
+
+# 4. 重启服务（按 UPDATE-GUIDE 中记录的服务管理方式执行）
 ```
 
 ---

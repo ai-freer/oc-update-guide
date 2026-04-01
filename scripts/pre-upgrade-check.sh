@@ -3,16 +3,17 @@
 # pre-upgrade-check.sh — OpenClaw 升级前自动检查脚本
 #
 # 用法：
-#   bash pre-upgrade-check.sh [target_version]
+#   bash scripts/pre-upgrade-check.sh [target_version]
 #
 # 示例：
-#   bash pre-upgrade-check.sh 2026.3.28
-#   bash pre-upgrade-check.sh              # 仅检查，不指定版本
+#   bash scripts/pre-upgrade-check.sh 2026.3.28
+#   bash scripts/pre-upgrade-check.sh              # 仅检查，不指定版本
 
 set -euo pipefail
 
 TOOL="openclaw"
 TARGET_VERSION="${1:-}"
+HAS_BLOCKERS=0
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -76,7 +77,7 @@ PATCH_SCRIPT="${CONFIG_DIR}/workspace/patches/apply-patches.sh"
 if [[ -f "${PATCH_SCRIPT}" ]]; then
   info "Patch 入口: ${PATCH_SCRIPT}"
   PATCH_COUNT=$(grep -c "patch\|sed\|replace" "${PATCH_SCRIPT}" 2>/dev/null || echo "0")
-  info "Patch 操作数（估算）: ${PATCH_COUNT}"
+  info "Patch 操作数（启发式估算，非精确值）: ${PATCH_COUNT}"
 else
   PATCH_SCRIPT="${HOME}/.${TOOL}/workspace-*/patches/apply-patches.sh"
   FOUND=$(ls ${PATCH_SCRIPT} 2>/dev/null | head -1 || true)
@@ -122,8 +123,12 @@ echo ""
 
 # 7. 磁盘空间
 echo "--- 磁盘空间 ---"
-AVAIL=$(df -h "${INSTALL_PATH}" 2>/dev/null | tail -1 | awk '{print $4}')
-info "可用空间: ${AVAIL}"
+if [[ -d "${INSTALL_PATH}" ]]; then
+  AVAIL=$(df -h "${INSTALL_PATH}" 2>/dev/null | tail -1 | awk '{print $4}')
+  info "可用空间: ${AVAIL}"
+else
+  warn "安装路径不存在，跳过磁盘检查"
+fi
 echo ""
 
 # 8. 目标版本 npm 可用性
@@ -137,6 +142,7 @@ if [[ -n "${TARGET_VERSION}" ]]; then
     fi
   else
     err "${TOOL}@${TARGET_VERSION} 在 npm 上不可用"
+    HAS_BLOCKERS=1
   fi
   echo ""
 fi
@@ -144,3 +150,5 @@ fi
 echo "=============================="
 echo " 检查完成"
 echo "=============================="
+
+exit "${HAS_BLOCKERS}"
