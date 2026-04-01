@@ -1,0 +1,16 @@
+{
+  "name": "oc-update-guide",
+  "version": "0.2.0",
+  "description": "Agent skill for systematically upgrading OpenClaw with pre-flight checks, changelog triage, local-patch preservation, environment scanning, and rollback support.",
+  "author": "Daniel Pan",
+  "license": "MIT",
+  "keywords": [
+    "agent-skill",
+    "upgrade",
+    "update",
+    "patch-management",
+    "openclaw",
+    "changelog-triage",
+    "environment-scan"
+  ]
+}
