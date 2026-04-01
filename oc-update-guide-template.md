@@ -59,7 +59,7 @@ npm list -g openclaw
 
 ```bash
 # 1. 备份配置
-cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak.$(date +%Y%m%d)
+cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak.$(date +%Y%m%d_%H%M%S)
 
 # 2. 指定版本升级（不要用 @latest）
 npm i -g openclaw@X.Y.Z
@@ -67,7 +67,7 @@ npm i -g openclaw@X.Y.Z
 # 3. 运行 doctor
 openclaw doctor
 
-# 4. 重启服务
+# 4. 重启服务（按实际部署环境，以下为 Linux/systemd 示例）
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 systemctl --user restart openclaw-gateway.service
 
@@ -81,6 +81,7 @@ openclaw status
 ```bash
 npm i -g openclaw@<旧版本号>
 openclaw doctor
+# 重启服务（按实际部署环境，以下为 Linux/systemd 示例）
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 systemctl --user restart openclaw-gateway.service
 ```
@@ -105,7 +106,7 @@ systemctl --user restart openclaw-gateway.service
 
 | # | Patch 名称 | 目标文件 | 验证命令 | Issue |
 |---|-----------|---------|---------|-------|
-| 1 | 示例 patch | `dist/target.js` | `grep -c "marker" ${target}` 返回 > 0 | #12345 |
+| 1 | 示例 patch | `dist/target.js` | `grep -c "marker" ${target_file}` 返回 > 0 | #12345 |
 
 ### Patch 失败处理
 

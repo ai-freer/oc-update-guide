@@ -188,6 +188,9 @@ openclaw doctor
 
 输出：`[Phase 5/6] 重打本地适配...`
 
+> 若存在多个 workspace，UPDATE-GUIDE.md 中应显式列出全部 patch 入口，
+> 本阶段需逐一执行并验证，回滚时同样逐一处理。
+
 #### 5a. 自动 Patch
 
 ```bash
@@ -262,6 +265,10 @@ openclaw doctor
 
 # 2. 恢复最近一份配置备份（取时间戳最新的 .bak.* 文件）
 LATEST_BAK=$(ls -t ${config_path}.bak.* 2>/dev/null | head -1)
+if [[ -z "${LATEST_BAK}" ]]; then
+  echo "错误：未找到配置备份文件，无法自动恢复。请手动检查。" >&2
+  exit 1
+fi
 cp "${LATEST_BAK}" ${config_path}
 
 # 3. 重打 patch
